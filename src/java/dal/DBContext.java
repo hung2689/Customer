@@ -2,34 +2,45 @@ package dal;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.util.Properties;
+import java.io.InputStream;
 
 public class DBContext {
+
     protected Connection c;
 
     public DBContext() {
         try {
-            String url = "jdbc:sqlserver://localhost:1433;databaseName=SINHVIEN;encrypt=true;trustServerCertificate=true";
-            String username = "sa";
-            String pass = "123";
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-            c = DriverManager.getConnection(url,username,pass);
+
+            String url = System.getenv("DB_URL");
+            String user = System.getenv("DB_USERNAME");
+            String pass = System.getenv("DB_PASSWORD");
+
+            if (url == null || user == null || pass == null) {
+                Properties prop = new Properties();
+                InputStream is = getClass()
+                        .getClassLoader()
+                        .getResourceAsStream("db.properties");
+
+                if (is == null) {
+                    throw new RuntimeException("db.properties not found in classpath");
+                }
+
+                prop.load(is);
+                url = prop.getProperty("db.url");
+                user = prop.getProperty("db.username");
+                pass = prop.getProperty("db.password");
+            }
+
+            c = DriverManager.getConnection(url, user, pass);
+
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Cannot connect to database", e);
         }
     }
 
-    public void closeConnection() {
-        try {
-            if (c != null && !c.isClosed()) {
-                c.close();
-                System.out.println("Connection closed successfully.");
-            }
-        } catch (SQLException e) {
-            System.out.println("Error closing connection: " + e.getMessage());
-        }
-    }
-    public static void main(String[] args) {
-        DBContext d = new DBContext();
+    public Connection getConnection() {
+        return c;
     }
 }
